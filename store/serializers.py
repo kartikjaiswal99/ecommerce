@@ -185,11 +185,6 @@ class CreateOrderSerializer(serializers.Serializer):
                 ) for item in cart_items
             ]
             OrderItem.objects.bulk_create(order_items)
-
             Cart.objects.filter(pk=cart_id).delete()
-
             order_created.send_robust(self.__class__, order=order)
-
             return order
-
-    

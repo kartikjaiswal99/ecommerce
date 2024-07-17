@@ -2,7 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 from .models import Cart, CartItem, Customer, Order, OrderItem, Product, Collection, Review, ProductImage
 from .signals import order_created
-
+from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 class CustomerSerializer(serializers.ModelSerializer):
     user_id = serializers.IntegerField(read_only=True)
@@ -129,7 +129,6 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     
 
-
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     grand_total = serializers.SerializerMethodField()
@@ -145,8 +144,6 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = ['id', 'customer', 'placed_at', 'payment_status', 'items','grand_total']
 
     
-
-
 
 class UpdateOrderSerializer(serializers.ModelSerializer):
     class Meta:
@@ -188,3 +185,20 @@ class CreateOrderSerializer(serializers.Serializer):
             Cart.objects.filter(pk=cart_id).delete()
             order_created.send_robust(self.__class__, order=order)
             return order
+        
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+    default_error_messages = {
+        'bad_token':{'token is invalid'}
+    }
+    
+    def validate(self, attrs):
+        self.token = attrs['refresh']
+        return attrs
+    
+    def save(self, **kwargs):
+        try: 
+            RefreshToken(self.token).blacklist()
+        except TokenError:
+            self.fail('bad_token') 

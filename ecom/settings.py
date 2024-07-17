@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     "corsheaders",
     'djoser',
     'django_filters',
@@ -163,3 +164,5 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('JWT',),
     'ACCESS_TOKEN_LIFETIME': timedelta(days=3)
 }
+
+FLW_SEC_KEY = 'FLWSECK_TEST-73e81ea9865e8ef6f978d31f11f4714c-X'

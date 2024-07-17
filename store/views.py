@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.conf import settings
 from django.db.models.aggregates import Count
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.permissions import IsAuthenticated,AllowAny,IsAdminUser
@@ -7,13 +8,64 @@ from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, RetrieveM
 from rest_framework.filters import SearchFilter,OrderingFilter
 from rest_framework.viewsets import ModelViewSet,GenericViewSet
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import status
+from uuid import uuid4
+import requests
 
 from .models import Cart, CartItem, Collection, Customer, Order, OrderItem, Product, Review, ProductImage
-from .serializers import ProductSerializer,CollectionSerializer,ReviewSerializer,CartSerializer,CartItemSerializer,AddCartItemSerializer,UpdateCartItemSerializer,OrderSerializer,CreateOrderSerializer,UpdateOrderSerializer,CustomerSerializer,ProductImageSerializer
+from .serializers import ProductSerializer,CollectionSerializer,ReviewSerializer,CartSerializer,CartItemSerializer,AddCartItemSerializer,UpdateCartItemSerializer,OrderSerializer,CreateOrderSerializer,UpdateOrderSerializer,CustomerSerializer,ProductImageSerializer, LogoutSerializer
 from .filters import ProductFilter
 from .pagination import DefaultPagination
 from .permissions import IsAdminOrReadOnly,ViewCustomerHistoryPermission
+
+
+def initiate_payment(amount, email, order_id):
+    url = "https://api.flutterwave.com/v3/payments"
+    headers = {
+        "Authorization": f"Bearer {settings.FLW_SEC_KEY}"
+    }
+    
+    data = {
+        "tx_ref": str(uuid4()),
+        "amount": str(amount), 
+        "currency": "INR",
+        "redirect_url": "http:/127.0.0.1:8000/store/orders/confirm_payment/?o_id=" + order_id,
+        "meta": {
+            "consumer_id": 23,
+            "consumer_mac": "92a3-912ba-1192a"
+        },
+        "customer": {
+            "email": email,
+            "phonenumber": "080****4528",
+            "name": "Yemi Desola"
+        },
+        "customizations": {
+            "title": "Pied Piper Payments",
+            "logo": "http://www.piedpiper.com/app/themes/joystick-v27/images/logo.png"
+        }
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response_data = response.json()
+        return Response(response_data)
+    
+    except requests.exceptions.RequestException as err:
+        print("the payment didn't go through")
+        return Response({"error": str(err)}, status=500)
+
+
+class LogoutAPIView(APIView):
+    serializer_class = LogoutSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self,request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class ProductViewSet(ModelViewSet):
     queryset = Product.objects.prefetch_related('images').all() #using prefetch to reduce number of queries in the database
@@ -85,6 +137,30 @@ class CartItemViewSet(ModelViewSet):
     
 class OrderViewSet(ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
+
+    @action(detail=True, methods=['POST'])
+    def pay(self, request, pk):
+        order = self.get_object()
+        amount = order.get_grand_total
+        # email = settings.AUTH_USER_MODEL.email
+        email = request.user.email
+        order_id = str(order.id)
+        # redirect_url = "http://127.0.0.1:8000/confirm"
+        return initiate_payment(amount, email, order_id)
+
+    @action(detail=False, methods=["POST"])
+    def confirm_payment(self, request):
+        order_id = request.GET.get("o_id")
+        order = Order.objects.get(id=order_id)
+        order.payment_status = "C"
+        order.save()
+        serializer = OrderSerializer(order)
+        
+        data = {
+            "msg": "payment was successful",
+            "data": serializer.data
+        }
+        return Response(data)
 
     def get_permissions(self):
         if self.request.method in ['PATCH', 'DELETE']:

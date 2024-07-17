@@ -84,6 +84,13 @@ class Order(models.Model):
             ('cancel_order','Can cancel order')
         ]
 
+    @property
+    def get_grand_total(self):
+        items = self.items.all()
+        total = sum([item.quantity * item.product.unit_price for item in items])
+        return total
+
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.PROTECT, related_name='items')

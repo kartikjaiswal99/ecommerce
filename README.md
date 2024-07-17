@@ -21,3 +21,28 @@ This project is an E-commerce API built using Django and Django REST Framework. 
 - **JWT**: JSON Web Tokens for secure user authentication.
 - **Flutterwave**: A payment processing service for integrating payment gateways.
 - **Pytest**: A framework that makes building simple and scalable test cases easy.
+
+### Usage
+1. **Clone the Repository**
+   ```bash
+   git clone https://github.com/kartikjaiswal99/ecommerce.git
+   ```
+
+2. **Pull the Docker Image**
+   ```bash
+   docker pull kartik5180/e-commerce_api
+   ```
+
+3. **Run the Docker Container**
+   If you pulled the image directly from Docker Hub, you might use:
+   ```bash
+   docker run -p 8000:8000 kartik5180/e-commerce_api:latest
+   ```
+
+4. **Accessing the API**
+   Once the container is running, you can access the API from your web browser or tools like Postman:
+   ```bash
+   http://localhost:8000/
+   ```
+#### Notes
+- Ensure Docker is installed and running on your machine before running the commands.
